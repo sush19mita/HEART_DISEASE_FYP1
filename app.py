@@ -198,43 +198,54 @@ with tab2:
 
 
 with tab3:
-    
-    import plotly.express as px
-    import pandas as pd
+
     import streamlit as st
+    import pandas as pd
+    import plotly.express as px
 
-    st.subheader("🔍 Model Performance Overview")
+    st.subheader("📊 Model Performance")
+
     st.write("""
-             Coronary artery disease (CAD), a leading form of heart disease, occurs when arterial blockages reduce
-blood flow to the heart, often causing heart attacks and other serious conditions. Early detection is crucial for effective management and treatment.
-             
+    **BEACON-X + Validation-Weighted Dynamic Multi-Expert Classifier (VW-DMEC)**
 
-    Machine learning models can help doctors and researchers identify patients who are at high risk 
-    of heart disease based on various clinical parameters.  
-    Below is a comparison of different models and how well they performed on the dataset.
+    The proposed framework combines BEACON-X feature selection with four expert models
+    (Logistic Regression, Decision Tree, SVM, and XGBoost). The final prediction is
+    made by dynamically selecting the expert with the highest validation-weighted confidence.
     """)
 
-    data = {
-        '   XG Boost': 0.89,
-        'Random Forest Classifier': 0.87,
-        'Support Vector Machine': 0.85,
-        'Logistic Regression': 0.86
-    }
-    
-    models = list(data.keys())
-    accuracy = list(data.values())
-    df = pd.DataFrame({'Models': models, 'Accuracy': accuracy})
-    
-    fig = px.bar(df, x='Models', y='Accuracy',
-                 title='Model Accuracy Comparison',
-                 text='Accuracy',
-                 color='Models',
-                 color_discrete_sequence=px.colors.qualitative.Pastel)
-    
+    metrics = pd.DataFrame({
+        "Metric": ["Accuracy", "Precision", "Recall", "F1 Score", "ROC-AUC"],
+        "Score": [0.8623, 0.8800, 0.8684, 0.8742, 0.9000]
+    })
+
+    fig = px.bar(
+        metrics,
+        x="Metric",
+        y="Score",
+        text="Score",
+        color="Metric",
+        color_discrete_sequence=px.colors.qualitative.Set2
+    )
+
     fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
-    fig.update_layout(yaxis_range=[0, 1])  
-    
-   
+    fig.update_layout(
+        title="Proposed Model Performance",
+        yaxis_range=[0, 1],
+        showlegend=False
+    )
+
     st.plotly_chart(fig, use_container_width=True)
 
+    st.markdown("### Framework")
+    st.info("""
+    **Dataset → Preprocessing → BEACON-X → LR | DT | SVM | XGBoost → Validation-Weighted Expert Selection → Prediction**
+    """)
 
+    st.markdown("### Highlights")
+    st.markdown("""
+    - ✅ BEACON-X Feature Selection
+    - ✅ Dynamic Multi-Expert Classification
+    - ✅ Validation-Weighted Confidence Selection
+    - ✅ **Accuracy:** 86.23%
+    - ✅ **ROC-AUC:** 0.90
+    """)
