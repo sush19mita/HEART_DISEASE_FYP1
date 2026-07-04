@@ -48,37 +48,34 @@ with tab1:
         'ST_Slope': [st_slope_dict]
     })
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    algoNames = ["Logistic Regression", "Support Vector Machine", "Random Forest", "XG Boost Classifier"]
+    modelNames = ["LogisticR .pickle", "SVM.pickle", "RFC1.pickle", "XGB.pickle"]
 
-    model_path = os.path.join(base_dir, "BEACONX_VWDMEC.pkl")
-
-    with open(model_path, "rb") as file:
-        model = pickle.load(file)
+    # Function to make predictions
+    def predict_heart_disease(data):
+        predictions = []
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        for modelName in modelNames:
+            model_path = os.path.join(base_dir, modelName)
+            model = pickle.load(open(model_path, 'rb'))
+            prediction = model.predict(data)
+            predictions.append(prediction)
+        return predictions
 
     # Submit button
     if st.button("Submit"):
         st.subheader("---------- RESULTS ----------")
         st.markdown("----------------------------")
 
-        prediction = model.predict(input_data)[0]
+        result = predict_heart_disease(input_data)
 
-        probability = model.predict_proba(input_data)[0]
-
-        expert = model.last_selected_expert
-
-        st.subheader("Prediction")
-
-        if prediction == 1:
-
-            st.error("Heart Disease Detected")
-
-        else:
-
-            st.success("No Heart Disease Detected")
-
-        st.write(f"Prediction Probability : {probability:.4f}")
-
-        st.write(f"Selected Expert : {expert}")
+        for i in range(len(result)):
+            st.subheader(algoNames[i])
+            if result[i][0] == 0:
+                st.write("No Heart Disease detected")
+            else:
+                st.write("Heart Disease detected")
+            st.markdown("------------------------")
 
 
 with tab2:
@@ -159,7 +156,7 @@ with tab2:
         
         # Load your trained model
         # @st.cache_resource is better for models if you want to keep the model loaded across sessions
-        model = pickle.load(open("BEACONX_VWDMEC.pkl", 'rb')) 
+        model = pickle.load(open("RFC1.pickle", 'rb')) 
 
         
 
@@ -201,54 +198,43 @@ with tab2:
 
 
 with tab3:
-
-    import streamlit as st
-    import pandas as pd
+    
     import plotly.express as px
+    import pandas as pd
+    import streamlit as st
 
-    st.subheader("📊 Model Performance")
-
+    st.subheader("🔍 Model Performance Overview")
     st.write("""
-    **BEACON-X + Validation-Weighted Dynamic Multi-Expert Classifier (VW-DMEC)**
+             Coronary artery disease (CAD), a leading form of heart disease, occurs when arterial blockages reduce
+blood flow to the heart, often causing heart attacks and other serious conditions. Early detection is crucial for effective management and treatment.
+             
 
-    The proposed framework combines BEACON-X feature selection with four expert models
-    (Logistic Regression, Decision Tree, SVM, and XGBoost). The final prediction is
-    made by dynamically selecting the expert with the highest validation-weighted confidence.
+    Machine learning models can help doctors and researchers identify patients who are at high risk 
+    of heart disease based on various clinical parameters.  
+    Below is a comparison of different models and how well they performed on the dataset.
     """)
 
-    metrics = pd.DataFrame({
-        "Metric": ["Accuracy", "Precision", "Recall", "F1 Score", "ROC-AUC"],
-        "Score": [0.8623, 0.8800, 0.8684, 0.8742, 0.9000]
-    })
-
-    fig = px.bar(
-        metrics,
-        x="Metric",
-        y="Score",
-        text="Score",
-        color="Metric",
-        color_discrete_sequence=px.colors.qualitative.Set2
-    )
-
+    data = {
+        '   XG Boost': 0.89,
+        'Random Forest Classifier': 0.87,
+        'Support Vector Machine': 0.85,
+        'Logistic Regression': 0.86
+    }
+    
+    models = list(data.keys())
+    accuracy = list(data.values())
+    df = pd.DataFrame({'Models': models, 'Accuracy': accuracy})
+    
+    fig = px.bar(df, x='Models', y='Accuracy',
+                 title='Model Accuracy Comparison',
+                 text='Accuracy',
+                 color='Models',
+                 color_discrete_sequence=px.colors.qualitative.Pastel)
+    
     fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
-    fig.update_layout(
-        title="Proposed Model Performance",
-        yaxis_range=[0, 1],
-        showlegend=False
-    )
-
+    fig.update_layout(yaxis_range=[0, 1])  
+    
+   
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("### Framework")
-    st.info("""
-    **Dataset → Preprocessing → BEACON-X → LR | DT | SVM | XGBoost → Validation-Weighted Expert Selection → Prediction**
-    """)
 
-    st.markdown("### Highlights")
-    st.markdown("""
-    - ✅ BEACON-X Feature Selection
-    - ✅ Dynamic Multi-Expert Classification
-    - ✅ Validation-Weighted Confidence Selection
-    - ✅ **Accuracy:** 86.23%
-    - ✅ **ROC-AUC:** 0.90
-    """)
