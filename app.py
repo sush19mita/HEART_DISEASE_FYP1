@@ -48,8 +48,8 @@ with tab1:
         'ST_Slope': [st_slope_dict]
     })
 
-    algoNames = ["Logistic Regression", "Support Vector Machine", "Random Forest", "XG Boost Classifier"]
-    modelNames = ["LogisticR .pickle", "SVM.pickle", "RFC1.pickle", "XGB.pickle"]
+    algoNames = ["Logistic Regression", "Support Vector Machine", "Random Forest", "XG Boost Classifier", "BEACONX_VWDMEC"]
+    modelNames = ["LogisticR .pickle", "SVM.pickle", "RFC1.pickle", "XGB.pickle", "SVM.pkl"]
 
     # Function to make predictions
     def predict_heart_disease(data):
