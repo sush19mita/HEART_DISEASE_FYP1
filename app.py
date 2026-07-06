@@ -131,10 +131,41 @@ with tab2:
         input_data = input_data.loc[:, ~input_data.columns.str.contains('^Unnamed')]
         input_data.columns = input_data.columns.str.strip()
 
-        for col in input_data.columns:
-            temp_series = input_data[col].astype(str).str.strip()
-            input_data[col] = pd.to_numeric(temp_series, errors='coerce') 
+        # Define the exact feature names your model expects in order
+        feature_cols = [
+            'Age', 'Sex', 'ChestPainType', 'RestingBP', 'Cholesterol', 
+            'FastingBS', 'RestingECG', 'MaxHR', 'ExerciseAngina', 
+            'Oldpeak', 'ST_Slope'
+        ]
 
+        # Verify columns match requirements
+        missing_cols = [col for col in feature_cols if col not in input_data.columns]
+        if missing_cols:
+            st.error(f"❌ The uploaded CSV is missing required columns: {missing_cols}")
+            st.stop()
+
+        # Handle Categorical Mappings if users upload text representations in CSV
+        for col in input_data.columns:
+            if input_data[col].dtype == 'object':
+                input_data[col] = input_data[col].astype(str).str.strip()
+                
+                # Check and convert Sex if textual
+                if col == 'Sex':
+                    input_data['Sex'] = input_data['Sex'].map({'Female': 1, 'Female ': 1, 'Male': 0, 'Male ': 0}).fillna(input_data['Sex'])
+                
+                # Check and convert FastingBS if textual
+                elif col == 'FastingBS':
+                    input_data['FastingBS'] = input_data['FastingBS'].map({'Yes': 1, 'No': 0}).fillna(input_data['FastingBS'])
+                
+                # Check and convert ExerciseAngina if textual
+                elif col == 'ExerciseAngina':
+                    input_data['ExerciseAngina'] = input_data['ExerciseAngina'].map({'Yes': 1, 'No': 0}).fillna(input_data['ExerciseAngina'])
+
+        # Now convert clean columns to purely numeric types
+        for col in feature_cols:
+            input_data[col] = pd.to_numeric(input_data[col], errors='coerce')
+
+        # Fallback for remaining missing inputs
         input_data = input_data.fillna(0)
         
         # --- Check for minimum rows needed ---
@@ -142,28 +173,14 @@ with tab2:
             st.error("The uploaded file contains no data rows after cleaning. Please check the file.")
             st.stop()
 
-       # --- Prediction Logic ---
+        # --- Prediction Logic ---
         model = pickle.load(open("RFC1.pickle", 'rb')) 
 
-        # Add Prediction column initialized as numeric NaN to avoid string type-casting error
         df_results = input_data.copy()
-        df_results["Prediction"] = np.nan
 
-        # 1. Define the exact feature names your model expects in order
-        feature_cols = [
-            'Age', 'Sex', 'ChestPainType', 'RestingBP', 'Cholesterol', 
-            'FastingBS', 'RestingECG', 'MaxHR', 'ExerciseAngina', 
-            'Oldpeak', 'ST_Slope'
-        ]
-
-        # 2. Make predictions using explicit column names instead of iloc[:-1]
-        for i in range(len(df_results)):
-            # This safely grabs only the 11 feature columns, ignoring any extra columns or index columns
-            arr = df_results.loc[i, feature_cols].values
-            df_results.loc[i, 'Prediction'] = model.predict([arr])[0]
-
-        # 3. Clean up the output column so it displays cleanly as 0 or 1 instead of 0.0 or 1.0
-        df_results["Prediction"] = df_results["Prediction"].astype(int)
+        # Run vectorized bulk predictions using a clean dataframe slice matching the feature schema
+        predictions = model.predict(df_results[feature_cols])
+        df_results["Prediction"] = predictions.astype(int)
 
         # Save the final results to Streamlit Session State and a temporary file
         st.session_state['prediction_results'] = df_results
@@ -185,37 +202,4 @@ with tab2:
                 file_name="Bulk_Prediction_Results.csv", 
                 mime="text/csv"
             )
-with tab3:
-    st.subheader("🔍 Model Performance Overview")
-    st.write("""
-             Coronary artery disease (CAD), a leading form of heart disease, occurs when arterial blockages reduce
-blood flow to the heart, often causing heart attacks and other serious conditions. Early detection is crucial for effective management and treatment.
-             
 
-    Machine learning models can help doctors and researchers identify patients who are at high risk 
-    of heart disease based on various clinical parameters.  
-    Below is a comparison of different models and how well they performed on the dataset.
-    """)
-
-    data = {
-        'XG Boost': 0.89,
-        'Random Forest Classifier': 0.87,
-        'Support Vector Machine': 0.85,
-        'Logistic Regression': 0.86
-    }
-    
-    models = list(data.keys())
-    accuracy = list(data.values())
-    df = pd.DataFrame({'Models': models, 'Accuracy': accuracy})
-    
-    fig = px.bar(df, x='Models', y='Accuracy',
-                 title='Model Accuracy Comparison',
-                 text='Accuracy',
-                 color='Models',
-                 color_discrete_sequence=px.colors.qualitative.Pastel)
-    
-    fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
-    fig.update_layout(yaxis_range=[0, 1])  
-    
-    # Modern Streamlit container scaling configuration
-    st.plotly_chart(fig, width='stretch')
