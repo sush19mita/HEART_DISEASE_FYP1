@@ -105,7 +105,7 @@ with tab2:
     # --- Configuration ---
     OUTPUT_FILE_NAME = "test_output.csv" 
 
-   if uploaded_file is not None:
+    if uploaded_file is not None:
         
         # 1. Clear previous session state and output file if re-uploading
         if 'prediction_results' in st.session_state:
@@ -173,7 +173,7 @@ with tab2:
             # Force convert everything to numeric now that strings are handled
             df_results[col] = pd.to_numeric(df_results[col], errors='coerce')
 
-        # Fill any true missing values with the median or 0 as a last resort
+        # Fill any true missing values with 0 as a last resort
         df_results[feature_cols] = df_results[feature_cols].fillna(0)
         
         # Check for minimum rows needed
@@ -184,7 +184,7 @@ with tab2:
         # --- Prediction Logic ---
         model = pickle.load(open("RFC1.pickle", 'rb')) 
 
-        # Make predictions cleanly across the dataframe
+        # Make predictions cleanly across the dataframe features
         predictions = model.predict(df_results[feature_cols])
         df_results["Prediction"] = predictions.astype(int)
 
@@ -192,6 +192,7 @@ with tab2:
         st.session_state['prediction_results'] = df_results
         df_results.to_csv(OUTPUT_FILE_NAME, index=False)
         st.success(f"✅ Predictions made successfully for **{len(df_results)} rows**! Download the results below.")
+
     # --- Display and Download Section ---
     if 'prediction_results' in st.session_state:
         st.subheader("Prediction Results")
@@ -207,4 +208,3 @@ with tab2:
                 file_name="Bulk_Prediction_Results.csv", 
                 mime="text/csv"
             )
-
