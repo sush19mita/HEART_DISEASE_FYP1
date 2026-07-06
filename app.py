@@ -105,7 +105,7 @@ with tab2:
     # --- Configuration ---
     OUTPUT_FILE_NAME = "test_output.csv" 
 
-    if uploaded_file is not None:
+   if uploaded_file is not None:
         
         # 1. Clear previous session state and output file if re-uploading
         if 'prediction_results' in st.session_state:
@@ -144,41 +144,47 @@ with tab2:
             st.error(f"❌ The uploaded CSV is missing required columns: {missing_cols}")
             st.stop()
 
-        # Handle Categorical Mappings if users upload text representations in CSV
-        for col in input_data.columns:
-            if input_data[col].dtype == 'object':
-                input_data[col] = input_data[col].astype(str).str.strip()
-                
-                # Check and convert Sex if textual
-                if col == 'Sex':
-                    input_data['Sex'] = input_data['Sex'].map({'Female': 1, 'Female ': 1, 'Male': 0, 'Male ': 0}).fillna(input_data['Sex'])
-                
-                # Check and convert FastingBS if textual
-                elif col == 'FastingBS':
-                    input_data['FastingBS'] = input_data['FastingBS'].map({'Yes': 1, 'No': 0}).fillna(input_data['FastingBS'])
-                
-                # Check and convert ExerciseAngina if textual
-                elif col == 'ExerciseAngina':
-                    input_data['ExerciseAngina'] = input_data['ExerciseAngina'].map({'Yes': 1, 'No': 0}).fillna(input_data['ExerciseAngina'])
+        # Create a deep copy to manipulate safely
+        df_results = input_data.copy()
 
-        # Now convert clean columns to purely numeric types
+        # Smart Text-to-Number Parser
         for col in feature_cols:
-            input_data[col] = pd.to_numeric(input_data[col], errors='coerce')
+            # Clean up whitespace strings
+            if df_results[col].dtype == 'object':
+                df_results[col] = df_results[col].astype(str).str.strip()
+                
+                # If values look like "0: Atypical Angina", extract the leading number
+                if df_results[col].str.contains(r'^\d').any():
+                    df_results[col] = df_results[col].str.extract(r'^(\d+)')[0]
+                
+                # If they are standard text representations, map them to correct numbers
+                else:
+                    if col == 'Sex':
+                        df_results['Sex'] = df_results['Sex'].map({'Female': 1, 'F': 1, 'female': 1, 'Male': 0, 'M': 0, 'male': 0})
+                    elif col in ['FastingBS', 'ExerciseAngina']:
+                        df_results[col] = df_results[col].map({'Yes': 1, 'Y': 1, 'yes': 1, 'No': 0, 'N': 0, 'no': 0})
+                    elif col == 'ChestPainType':
+                        df_results['ChestPainType'] = df_results['ChestPainType'].map({'Typical Angina': 3, 'Atypical Angina': 0, 'Non-Anginal Pain': 1, 'Asymptomatic': 2, 'TA': 3, 'ATA': 0, 'NAP': 1, 'ASY': 2})
+                    elif col == 'RestingECG':
+                        df_results['RestingECG'] = df_results['RestingECG'].map({'Normal': 0, 'ST-T Wave Abnormality': 1, 'ST': 1, 'Left Ventricular Hypertrophy': 2, 'LVH': 2})
+                    elif col == 'ST_Slope':
+                        df_results['ST_Slope'] = df_results['ST_Slope'].map({'Upsloping': 0, 'Up': 0, 'Flat': 1, 'Downsloping': 2, 'Down': 2})
 
-        # Fallback for remaining missing inputs
-        input_data = input_data.fillna(0)
+            # Force convert everything to numeric now that strings are handled
+            df_results[col] = pd.to_numeric(df_results[col], errors='coerce')
+
+        # Fill any true missing values with the median or 0 as a last resort
+        df_results[feature_cols] = df_results[feature_cols].fillna(0)
         
-        # --- Check for minimum rows needed ---
-        if len(input_data) == 0:
+        # Check for minimum rows needed
+        if len(df_results) == 0:
             st.error("The uploaded file contains no data rows after cleaning. Please check the file.")
             st.stop()
 
         # --- Prediction Logic ---
         model = pickle.load(open("RFC1.pickle", 'rb')) 
 
-        df_results = input_data.copy()
-
-        # Run vectorized bulk predictions using a clean dataframe slice matching the feature schema
+        # Make predictions cleanly across the dataframe
         predictions = model.predict(df_results[feature_cols])
         df_results["Prediction"] = predictions.astype(int)
 
@@ -186,7 +192,6 @@ with tab2:
         st.session_state['prediction_results'] = df_results
         df_results.to_csv(OUTPUT_FILE_NAME, index=False)
         st.success(f"✅ Predictions made successfully for **{len(df_results)} rows**! Download the results below.")
-
     # --- Display and Download Section ---
     if 'prediction_results' in st.session_state:
         st.subheader("Prediction Results")
