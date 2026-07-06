@@ -8,7 +8,7 @@ import plotly
 import plotly.express as px
 
 st.title("Heart Disease Predictor")
-tab1, tab2, tab3 = st.tabs(['Predict', 'Bulk Predict', 'Model Information'])
+tab1, tab2 = st.tabs(['Predict', 'Bulk Predict'])
 
 with tab1:
     # Input fields
