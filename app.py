@@ -142,17 +142,28 @@ with tab2:
             st.error("The uploaded file contains no data rows after cleaning. Please check the file.")
             st.stop()
 
-        # --- Prediction Logic ---
+       # --- Prediction Logic ---
         model = pickle.load(open("RFC1.pickle", 'rb')) 
 
         # Add Prediction column initialized as numeric NaN to avoid string type-casting error
         df_results = input_data.copy()
         df_results["Prediction"] = np.nan
 
-        # Make predictions
+        # 1. Define the exact feature names your model expects in order
+        feature_cols = [
+            'Age', 'Sex', 'ChestPainType', 'RestingBP', 'Cholesterol', 
+            'FastingBS', 'RestingECG', 'MaxHR', 'ExerciseAngina', 
+            'Oldpeak', 'ST_Slope'
+        ]
+
+        # 2. Make predictions using explicit column names instead of iloc[:-1]
         for i in range(len(df_results)):
-            arr = df_results.iloc[i, :-1].values
+            # This safely grabs only the 11 feature columns, ignoring any extra columns or index columns
+            arr = df_results.loc[i, feature_cols].values
             df_results.loc[i, 'Prediction'] = model.predict([arr])[0]
+
+        # 3. Clean up the output column so it displays cleanly as 0 or 1 instead of 0.0 or 1.0
+        df_results["Prediction"] = df_results["Prediction"].astype(int)
 
         # Save the final results to Streamlit Session State and a temporary file
         st.session_state['prediction_results'] = df_results
@@ -174,8 +185,6 @@ with tab2:
                 file_name="Bulk_Prediction_Results.csv", 
                 mime="text/csv"
             )
-
-
 with tab3:
     st.subheader("🔍 Model Performance Overview")
     st.write("""
